@@ -1,520 +1,297 @@
 
+
+
 import pandas as pd
 import webbrowser
 
 import dash
 import dash_html_components as html
-from dash.dependencies import Input, State, Output 
-import dash_core_components as dcc 
+from dash.dependencies import Input, Output 
+import dash_core_components as dcc
 import plotly.graph_objects as go  
 import plotly.express as px
-from dash.exceptions import PreventUpdate
 
 
 
 app = dash.Dash()
+project_name = None
 
 
 def load_data():
-  dataset_name = "global_terror.csv"
-
+    dataset_name = "global_terror.csv"
   
-  pd.options.mode.chained_assignment = None
+    global df
+    df = pd.read_csv(dataset_name)
   
-  global df
-  df = pd.read_csv(dataset_name)
+    global month_list
+    month = {
+           "January":1,
+           "February": 2,
+           "March": 3,
+           "April":4,
+           "May":5,
+           "June":6,
+           "July": 7,
+           "August":8,
+           "September":9,
+           "October":10,
+           "November":11,
+           "December":12
+           }
+    month_list= [{"label":key, "value":values} for key,values in month.items()]
   
+    global region_list
+    temp_list = sorted( df['region_txt'].unique().tolist())
+    region_list = [{"label": str(i), "value": str(i)}  for i in temp_list  ]
+    
+    global attack_type_list
+    temp_list = df['attacktype1_txt'].unique().tolist()
+    attack_type_list = [{"label": str(i), "value": str(i)}  for i in temp_list]
   
-  print(df.head(5))
-  print(df.tail(5))
-
-  global month_list
-  month = {
-         "January":1,
-         "February": 2,
-         "March": 3,
-         "April":4,
-         "May":5,
-         "June":6,
-         "July": 7,
-         "August":8,
-         "September":9,
-         "October":10,
-         "November":11,
-         "December":12
-         }
-  month_list= [{"label":key, "value":values} for key,values in month.items()]
-
-  global date_list
-  date_list = [x for x in range(1, 32)]
-
-
-  global region_list
-  region_list = [{"label": str(i), "value": str(i)}  for i in sorted( df['region_txt'].unique().tolist() ) ]
+    global year_list
+    year_list = sorted ( df['iyear'].unique().tolist()  )
   
- 
-
-  global country_list
-  
-  country_list = df.groupby("region_txt")["country_txt"].unique().apply(list).to_dict()
+    global year_dict
+    year_dict = {str(year): str(year) for year in year_list}
 
 
-  global state_list
-  state_list = df.groupby("country_txt")["provstate"].unique().apply(list).to_dict()
-
-
-  global city_list
-  
-  city_list  = df.groupby("provstate")["city"].unique().apply(list).to_dict()
-
-
-  global attack_type_list
-  attack_type_list = [{"label": str(i), "value": str(i)}  for i in df['attacktype1_txt'].unique().tolist()]
-  
-
-
-  global year_list
-  year_list = sorted ( df['iyear'].unique().tolist()  )
-
-  global year_dict
-  year_dict = {str(year): str(year) for year in year_list}
-  
-  
- 
-  global chart_dropdown_values
-  chart_dropdown_values = {"Terrorist Organisation":'gname', 
-                             "Target Nationality":'natlty1_txt', 
-                             "Target Type":'targtype1_txt', 
-                             "Type of Attack":'attacktype1_txt', 
-                             "Weapon Type":'weaptype1_txt', 
-                             "Region":'region_txt', 
-                             "Country Attacked":'country_txt'
-                          }
-                              
-  chart_dropdown_values = [{"label":keys, "value":value} for keys, value in chart_dropdown_values.items()]
-  
 def open_browser():
-  
-  webbrowser.open_new('http://127.0.0.1:8050/')
+    
+    webbrowser.open_new('http://127.0.0.1:8050/')
 
 
 
 def create_app_ui():
-    
-  colors = {
-    'background': '#111111',
-    'text': '#CB3414',
-    'hey':'#008080',
-    'man':'#000080',
-    }
-  main_layout = html.Div([
-  html.H1('Terrorism Analysis with Insights', id='Main_title',style={
-            'textAlign': 'center',
-            'color': colors['text']
-        }),
-  dcc.Tabs(id="Tabs", value="Map",children=[
-      dcc.Tab(label="Map tool" ,id="Map tool",value="Map", children=[
-          dcc.Tabs(id = "subtabs", value = "WorldMap",children = [
-              dcc.Tab(label="World Map tool", id="World", value="WorldMap"),
-              dcc.Tab(label="India Map tool", id="India", value="IndiaMap")
-              ]),
-          
-          
-          
-          
-          html.Div([
-          html.H5('Please Select the data you want to filter out:', id='data',style={
-            'textAlign': 'left',
-            'color': colors['hey']
-        }),
-   
-  
-  html.H5('Month:', id='mon',style={
-            'textAlign': 'left',
-            'color': colors['man'],
-            'font-family': 'Malgun Gothic'
-        }),
-  dcc.Dropdown(
-        id='month', 
-        multi=True,
-        searchable=True,
-        options=month_list,
-        style={'border-radius':'40px','width':"60%"},
-        placeholder='Select Month',
-        
-        
-        
-        
-        
-        
-        
-        ),
-  html.H5('Date:', id='dat',style={
-            'textAlign': 'left',
-            'color': colors['man'],
-            'font-family': 'Malgun Gothic'
-        }),
- 
-  dcc.Dropdown(
-        id='date', 
-        multi=True,
-        searchable=True,
-        style={'border-radius':'40px', 'width':"60%"},
-        options=date_list,
-        placeholder='Select Day'),
-  html.H5('Region:', id='reg',style={
-            'textAlign': 'left',
-            'color': colors['man'],
-            'font-family': 'Malgun Gothic'
-        }),
-  dcc.Dropdown(
-        id='region-dropdown', 
-        multi=True,
-        searchable=True,
-        style={'border-radius':'40px','width':"60%"},
-        options=region_list,
-        placeholder='Select Region',
-  ),
-  html.H5('Country:', id='con',style={
-            'textAlign': 'left',
-            'color': colors['man'],
-            'font-family': 'Malgun Gothic'
-        }),
-  dcc.Dropdown(
-        id='country-dropdown', 
-        multi=True,
-        searchable=True,
-        style={'border-radius':'40px', 'width':"60%"},
-        options=[{'label': 'All', 'value': 'All'}],
-        placeholder='Select Country'
-  ),
-  html.H5('State:', id='sta',style={
-            'textAlign': 'left',
-            'color': colors['man'],
-            'font-family': 'Malgun Gothic'
-        }),
-  dcc.Dropdown(
-        id='state-dropdown', 
-        multi=True,
-        searchable=True,
-        style={'border-radius':'40px','width':"60%"},
-        options=[{'label': 'All', 'value': 'All'}],
-        placeholder='Select State or Province'
-  ),
-  html.H5('City:', id='cit',style={
-            'textAlign': 'left',
-            'color': colors['man'],
-            'font-family': 'Malgun Gothic'
-        }),
-  dcc.Dropdown(
-        id='city-dropdown', 
-        multi=True,
-        searchable=True,
-        style={'border-radius':'40px','width':"60%"},
-        options=[{'label': 'All', 'value': 'All'}],
-        placeholder='Select City'
-  ),
-  html.H5('Attack Type:', id='att',style={
-            'textAlign': 'left',
-            'color': colors['man'],
-            'font-family': 'Malgun Gothic'
-        }),
-  dcc.Dropdown(
-        id='attacktype-dropdown', 
-        multi=True,
-        searchable=True,
-        style={'border-radius':'40px','width':"60%"},
-        options=attack_type_list,
-        placeholder='Select Attack Type'
-  ),
 
-  html.H5('Select the Range of the Year:', id='year_title',style={
-            'textAlign': 'left',
-            'color': colors['man'],
-            'font-family': 'Malgun Gothic'}),
-  dcc.RangeSlider(
-        id='year-slider',
-        min=min(year_list),
-        max=max(year_list),
-        value=[min(year_list),max(year_list)],
-        marks=year_dict,
-        
-        
-  )]
-              ,style={'background-image':'url("/assets/white2.jpg")','background-repeat': 'no-repeat','background-size': '100% 100%'})
-  
-    ]),
-      
-      dcc.Tab(label = "Chart Tool", id="chart tool", value="Chart", children=[
-          dcc.Tabs(id = "subtabs2", value = "WorldChart",children = [
-              dcc.Tab(label="World Chart tool", id="WorldC", value="WorldChart"),          
-            dcc.Tab(label="India Chart tool", id="IndiaC", value="IndiaChart")]),
-            html.H5('Select the desired Parameter', id='para',style={
-            'textAlign': 'left',
-            'color': colors['man'],
-            'font-family': 'Malgun Gothic'}),
-            dcc.Dropdown(id="Chart_Dropdown", options = chart_dropdown_values, placeholder="Select option", value = "region_txt", style={'border-radius':'40px','width':"60%"},), 
-            html.Br(),
-            html.Br(),
-            html.Hr(),
-            dcc.Input(id="search", placeholder="Search Filter"),
-            html.Hr(),
-            html.Br(),
-            dcc.RangeSlider(
-                    id='cyear_slider',
-                    min=min(year_list),
-                    max=max(year_list),
-                    value=[min(year_list),max(year_list)],
-                    marks=year_dict,
-                    step=None
-                      ),
-                  html.Br()
-              ]),
-         ]),
-  html.Div(id = "graph-object", children ="Graph will be shown here")
-  ])
-        
-  return main_layout
-
-
-# Callbackpage
-@app.callback(dash.dependencies.Output('graph-object', 'children'),
+    main_layout = html.Div(
     [
-     dash.dependencies.Input("Tabs", "value"),
-    dash.dependencies.Input('month', 'value'),
-    dash.dependencies.Input('date', 'value'),
-    dash.dependencies.Input('region-dropdown', 'value'),
-    dash.dependencies.Input('country-dropdown', 'value'),
-    dash.dependencies.Input('state-dropdown', 'value'),
-    dash.dependencies.Input('city-dropdown', 'value'),
-    dash.dependencies.Input('attacktype-dropdown', 'value'),
-    dash.dependencies.Input('year-slider', 'value'), 
-    dash.dependencies.Input('cyear_slider', 'value'), 
-    
-    dash.dependencies.Input("Chart_Dropdown", "value"),
-    dash.dependencies.Input("search", "value"),
-    dash.dependencies.Input("subtabs2", "value")
+    html.H1('Terrorism Analysis with Insights', id='Main_title'),
+    dcc.Dropdown(
+          id='month-dropdown', 
+          options=month_list,
+          placeholder='Select Month',
+    ),
+    dcc.Dropdown(
+          id='date-dropdown', 
+
+          placeholder='Select Day',
+    ),
+            
+    dcc.Dropdown(
+          id='region-dropdown', 
+          options=region_list,
+          placeholder='Select Region',
+    ),
+    dcc.Dropdown(
+          id='country-dropdown', 
+          options=[{'label': 'All', 'value': 'All'}],
+          placeholder='Select Country'
+    ),
+    dcc.Dropdown(
+          id='state-dropdown', 
+          options=[{'label': 'All', 'value': 'All'}],
+          placeholder='Select State or Province'
+    ),
+    dcc.Dropdown(
+          id='city-dropdown', 
+          options=[{'label': 'All', 'value': 'All'}],
+          placeholder='Select City'
+    ),
+            
+            
+    dcc.Dropdown(
+          id='attacktype-dropdown', 
+          options=attack_type_list,
+          placeholder='Select Attack Type'
+    ),
+  
+    html.H5('Select the Year', id='year_title'),
+    dcc.RangeSlider(
+          id='year-slider',
+          min=min(year_list),
+          max=max(year_list),
+          value=[min(year_list),max(year_list)],
+          marks=year_dict
+    ),
+    html.Br(),
+    dcc.Loading(dcc.Graph(id='graph-object', figure = go.Figure()))
+
     ]
     )
-
-def update_app9_ui(Tabs, month_value, date_value,region_value,country_value,state_value,city_value,attack_value,year_value,chart_year_selector, chart_dp_value, search,
-                   subtabs2):
-    fig = None
-     
-    if Tabs == "Map":
-        print("Data Type of month value = " , str(type(month_value)))
-        print("Data of month value = " , month_value)
-        
-        print("Data Type of Day value = " , str(type(date_value)))
-        print("Data of Day value = " , date_value)
-        
-        print("Data Type of region value = " , str(type(region_value)))
-        print("Data of region value = " , region_value)
-        
-        print("Data Type of country value = " , str(type(country_value)))
-        print("Data of country value = " , country_value)
-        
-        print("Data Type of state value = " , str(type(state_value)))
-        print("Data of state value = " , state_value)
-        
-        print("Data Type of city value = " , str(type(city_value)))
-        print("Data of city value = " , city_value)
-        
-        print("Data Type of Attack value = " , str(type(attack_value)))
-        print("Data of Attack value = " , attack_value)
-        
-        print("Data Type of year value = " , str(type(year_value)))
-        print("Data of year value = " , year_value)
-        # year 
-        year_range = range(year_value[0], year_value[1]+1)
-        new_df = df[df["iyear"].isin(year_range)]
-        
-        # month
-        if month_value==[] or month_value is None:
-            pass
-        else:
-            if date_value==[] or date_value is None:
-                new_df = new_df[new_df["imonth"].isin(month_value)]
-            else:
-                new_df = new_df[new_df["imonth"].isin(month_value)
-                                & (new_df["iday"].isin(date_value))]
-        # region and remaining filter
-        if region_value==[] or region_value is None:
-            pass
-        else:
-            if country_value==[] or country_value is None :
-                new_df = new_df[new_df["region_txt"].isin(region_value)]
-            else:
-                if state_value == [] or state_value is None:
-                    new_df = new_df[(new_df["region_txt"].isin(region_value))&
-                                    (new_df["country_txt"].isin(country_value))]
-                else:
-                    if city_value == [] or city_value is None:
-                        new_df = new_df[(new_df["region_txt"].isin(region_value))&
-                        (new_df["country_txt"].isin(country_value)) &
-                        (new_df["provstate"].isin(state_value))]
-                    else:
-                        new_df = new_df[(new_df["region_txt"].isin(region_value))&
-                        (new_df["country_txt"].isin(country_value)) &
-                        (new_df["provstate"].isin(state_value))&
-                        (new_df["city"].isin(city_value))]
-                        
-        if attack_value == [] or attack_value is None:
-            pass
-        else:
-            new_df = new_df[new_df["attacktype1_txt"].isin(attack_value)] 
-        
-        
-            
-        mapFigure = go.Figure()
-        if new_df.shape[0]:
-            pass
-        else: 
-            new_df = pd.DataFrame(columns = ['iyear', 'imonth', 'iday', 'country_txt', 'region_txt', 'provstate',
-               'city', 'latitude', 'longitude', 'attacktype1_txt', 'nkill'])
-            
-            new_df.loc[0] = [0, 0 ,0, None, None, None, None, None, None, None, None]
-            
-        
-        mapFigure = px.scatter_mapbox(new_df,
-          lat="latitude", 
-          lon="longitude",
-          color="attacktype1_txt",
-          hover_name="city", 
-          hover_data=["region_txt", "country_txt", "provstate","city", "attacktype1_txt","nkill","iyear","imonth", "iday"],
-          zoom=1
-          )                       
-        mapFigure.update_layout(mapbox_style="open-street-map",
-          autosize=True,
-          margin=dict(l=0, r=0, t=25, b=20),
-          )
-          
-        fig = mapFigure
-
-    elif Tabs=="Chart":
-        fig = None
-        
-        
-        year_range_c = range(chart_year_selector[0], chart_year_selector[1]+1)
-        chart_df = df[df["iyear"].isin(year_range_c)]
-        
-        
-        if subtabs2 == "WorldChart":
-            pass
-        elif subtabs2 == "IndiaChart":
-            chart_df = chart_df[(chart_df["region_txt"]=="South Asia") &(chart_df["country_txt"]=="India")]
-        if chart_dp_value is not None and chart_df.shape[0]:
-            if search is not None:
-                chart_df = chart_df.groupby("iyear")[chart_dp_value].value_counts().reset_index(name = "count")
-                chart_df  = chart_df[chart_df[chart_dp_value].str.contains(search, case=False)]
-            else:
-                chart_df = chart_df.groupby("iyear")[chart_dp_value].value_counts().reset_index(name="count")
-        
-        
-        if chart_df.shape[0]:
-            pass
-        else: 
-            chart_df = pd.DataFrame(columns = ['iyear', 'count', chart_dp_value])
-            
-            chart_df.loc[0] = [0, 0,"No data"]
-        chartFigure = px.area(chart_df, x="iyear", y ="count", color = chart_dp_value)
-        fig = chartFigure
-    return dcc.Graph(figure = fig)
+    
+    return main_layout
 
 
 
 @app.callback(
-  Output("date", "options"),
-  [Input("month", "value")])
-def update_date(month):
-    option = []
-    if month:
-        option= [{"label":m, "value":m} for m in date_list]
-    return option
+    Output('graph-object', 'figure'),
+    [
+    Input('month-dropdown', 'value'),
+    Input('date-dropdown', 'value'),
+    Input('region-dropdown', 'value'),
+    Input('country-dropdown', 'value'),
+    Input('state-dropdown', 'value'),
+    Input('city-dropdown', 'value'),
+    Input('attacktype-dropdown', 'value'),
+    Input('year-slider', 'value')
+    ]
+    )
+def update_app_ui(month_value, date_value,region_value,country_value,state_value,city_value,attack_value,year_value):
+  
+    print("Data Type of month value = " , str(type(month_value)))
+    print("Data of month value = " , month_value)
+    
+    print("Data Type of Day value = " , str(type(date_value)))
+    print("Data of Day value = " , date_value)
+    
+    print("Data Type of region value = " , str(type(region_value)))
+    print("Data of region value = " , region_value)
+    
+    print("Data Type of country value = " , str(type(country_value)))
+    print("Data of country value = " , country_value)
+    
+    print("Data Type of state value = " , str(type(state_value)))
+    print("Data of state value = " , state_value)
+    
+    print("Data Type of city value = " , str(type(city_value)))
+    print("Data of city value = " , city_value)
+    
+    print("Data Type of Attack value = " , str(type(attack_value)))
+    print("Data of Attack value = " , attack_value)
+    
+    print("Data Type of year value = " , str(type(year_value)))
+    print("Data of year value = " , year_value)
+  
+    figure = go.Figure()
 
-@app.callback([Output("region-dropdown", "value"),
-               Output("region-dropdown", "disabled"),
-               Output("country-dropdown", "value"),
-               Output("country-dropdown", "disabled")],
-              [Input("subtabs", "value")])
-def update_r(tab):
-    region = None
-    disabled_r = False
-    country = None
-    disabled_c = False
-    if tab == "WorldMap":
+
+    year_range = range(year_value[0], year_value[1]+1)
+
+    new_df = df[df["iyear"].isin(year_range)]
+    
+
+    if month_value is None:
         pass
-    elif tab=="IndiaMap":
-        region = ["South Asia"]
-        disabled_r = True
-        country = ["India"]
-        disabled_c = True
-    return region, disabled_r, country, disabled_c
+    else:
+        if date_value is None:
+            new_df = new_df[new_df["imonth"]==month_value]
+                            
+        else:
+            new_df = new_df[(new_df["imonth"]==month_value)&
+                             (new_df["iday"]==date_value)]
 
+    if region_value is None:
+        pass
+    else:
+        if country_value is None:
+            new_df = new_df[new_df["region_txt"]==region_value]
+        else:
+            if state_value is None:
+                new_df = new_df[(new_df["region_txt"]==region_value)&
+                                (new_df["country_txt"]==country_value)]
+            else:
+                if city_value is None:
+                    new_df = new_df[(new_df["region_txt"]==region_value)&
+                                (new_df["country_txt"]==country_value) &
+                                (new_df["provstate"]==state_value)]
+                else:
+                    new_df = new_df[(new_df["region_txt"]==region_value)&
+                                (new_df["country_txt"]==country_value) &
+                                (new_df["provstate"]==state_value)&
+                                (new_df["city"]==city_value)]
+    
+                   
+    if attack_value is None:
+        pass
+    else:
+        new_df = new_df[new_df["attacktype1_txt"]==attack_value]
+      
+
+                        
+    if new_df.shape[0]:
+        pass
+    else: 
+        new_df = pd.DataFrame(columns = ['iyear', 'imonth', 'iday', 'country_txt', 'region_txt', 'provstate',
+       'city', 'latitude', 'longitude', 'attacktype1_txt', 'nkill'])
+        
+        new_df.loc[0] = [0, 0 ,0, None, None, None, None, None, None, None, None]
+   
+    
+    figure = px.scatter_mapbox(new_df,
+                  lat="latitude", 
+                  lon="longitude",
+                  color="attacktype1_txt",
+                  hover_data=["region_txt", "country_txt", "provstate","city", "attacktype1_txt","nkill","iyear","imonth", "iday"],
+                  zoom=1
+                  )                       
+    figure.update_layout(mapbox_style="open-street-map",
+              autosize=True,
+              margin=dict(l=0, r=0, t=25, b=20),
+              )
+  
+    return figure
+      
+
+@app.callback(
+  Output("date-dropdown", "options"),
+  [Input("month-dropdown", "value")])
+def update_date(month):
+    date_list = [x for x in range(1, 32)]
+
+    if month in [1,3,5,7,8,10,12]:
+        return [{"label":m, "value":m} for m in date_list]
+    elif month in [4,6,9,11]:
+        return [{"label":m, "value":m} for m in date_list[:-1]]
+    elif month==2:
+        return [{"label":m, "value":m} for m in date_list[:-2]]
+    
+    else:
+        return []
 
 
 @app.callback(
     Output('country-dropdown', 'options'),
     [Input('region-dropdown', 'value')])
 def set_country_options(region_value):
-    option = []
-    # country dd
-    if region_value is  None:
-        raise PreventUpdate
-    else:
-        for var in region_value:
-            if var in country_list.keys():
-                option.extend(country_list[var])
-    return [{'label':m , 'value':m} for m in option]
+    
+    return[{"label": str(i), "value": str(i)}  for i in df[df['region_txt'] == region_value] ['country_txt'].unique().tolist() ]
 
 
 @app.callback(
     Output('state-dropdown', 'options'),
     [Input('country-dropdown', 'value')])
 def set_state_options(country_value):
-  #state dd
-    option = []
-    if country_value is None :
-        raise PreventUpdate
-    else:
-        for var in country_value:
-            if var in state_list.keys():
-                option.extend(state_list[var])
-    return [{'label':m , 'value':m} for m in option]
+    
+    return [{"label": str(i), "value": str(i)}  for i in df[df['country_txt'] == country_value] ['provstate'].unique().tolist() ]
+
+
 @app.callback(
     Output('city-dropdown', 'options'),
     [Input('state-dropdown', 'value')])
 def set_city_options(state_value):
-  # city dd
-    option = []
-    if state_value is None:
-        raise PreventUpdate
-    else:
-        for var in state_value:
-            if var in city_list.keys():
-                option.extend(city_list[var])
-    return [{'label':m , 'value':m} for m in option]
+    
+    return [{"label": str(i), "value": str(i)}  for i in df[df['provstate'] == state_value] ['city'].unique().tolist() ]
 
-#finally
+
 def main():
-  load_data()
+    load_data()
+    
+    open_browser()
+    
+    global project_name
+    project_name = "Terrorism Analysis with Insights" 
+      
+      
+    global app
+    app.layout = create_app_ui()
+    app.title = project_name
+    
+    app.run_server() 
   
-  open_browser()
-  
-  global app
-  app.layout = create_app_ui()
-  app.title = "Terrorism Analysis with Insights"
-  
-  app.run_server() 
-
-  print("Thank You for using this project")
-  df = None
-  app = None
-
+    print("This would be executed only after the script is closed")
+    app = None
+    project_name = None
 
 
 if __name__ == '__main__':
     main()
-
-
-
